@@ -5907,6 +5907,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-dao-assets"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-democracy"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=release-v1.0.0-cumulus#b8d485fd4942539c438bf25a7823e410360fa053"
@@ -6784,6 +6800,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-collator-selection",
+ "pallet-dao-assets",
  "pallet-parachain-template",
  "pallet-session",
  "pallet-sudo",

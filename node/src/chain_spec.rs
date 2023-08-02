@@ -226,6 +226,7 @@ fn testnet_genesis(
 			..Default::default()
 		},
 		transaction_payment: Default::default(),
+		assets: Default::default(),
 		sudo: parachain_template_runtime::SudoConfig { key: Some(root) },
 	}
 }

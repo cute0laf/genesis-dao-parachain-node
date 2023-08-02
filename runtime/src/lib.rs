@@ -29,7 +29,7 @@ use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	parameter_types,
-	traits::{ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, Everything},
+	traits::{ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, Everything, AsEnsureOriginWithArg},
 	weights::{
 		constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
 		WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -458,6 +458,31 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = ();
 }
 
+// Configure the DAO pallets ...
+parameter_types! {
+	pub const ApprovalDeposit: Balance = EXISTENTIAL_DEPOSIT;
+	pub const AssetsStringLimit: u32 = 50;
+}
+
+// DAO assets
+impl pallet_dao_assets::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = Balance;
+	type AssetId = u32;
+	type AssetIdParameter = u32;
+	type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
+	type Currency = Balances;
+	type ForceOrigin = frame_system::EnsureRoot<AccountId>;
+	type ApprovalDeposit = ApprovalDeposit;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type StringLimit = AssetsStringLimit;
+	type HistoryHorizon = ConstU32<{ 5 * 144000 }>; // a day is 14400 blocks of 6s
+	type WeightInfo = pallet_dao_assets::weights::SubstrateWeight<Runtime>;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+}
+
 /// Configure the pallet template in pallets/template.
 impl pallet_parachain_template::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
@@ -495,6 +520,8 @@ construct_runtime!(
 
 		// Template
 		TemplatePallet: pallet_parachain_template = 50,
+
+		Assets: pallet_dao_assets = 51,
 	}
 );
 
