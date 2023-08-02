@@ -29,7 +29,10 @@ use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	parameter_types,
-	traits::{ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, Everything},
+	traits::{
+		AsEnsureOriginWithArg, ConstBool, ConstU128, ConstU32, ConstU64, ConstU8, EitherOfDiverse,
+		Everything, Randomness, StorageInfo,
+	},
 	weights::{
 		constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
 		WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -38,7 +41,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot,
+	EnsureRoot
 };
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 pub use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -57,8 +60,21 @@ use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 use xcm::latest::prelude::BodyId;
 use xcm_executor::XcmExecutor;
 
-/// Import the template pallet.
-pub use pallet_parachain_template;
+/// Import the DAO pallets ...
+pub use pallet_dao_assets;
+pub use pallet_dao_core;
+pub use pallet_dao_votes;
+
+/// Import Hookpoints pallet ...
+pub use pallet_hookpoints;
+
+// Prints debug output of the `contracts` pallet to stdout if the node is
+// started with `-lruntime::contracts=debug`.
+const CONTRACTS_DEBUG_OUTPUT: pallet_contracts::DebugInfo =
+	pallet_contracts::DebugInfo::UnsafeDebug;
+const CONTRACTS_EVENTS: pallet_contracts::CollectEvents =
+	pallet_contracts::CollectEvents::UnsafeCollect;
+
 
 /// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
 pub type Signature = MultiSignature;
@@ -122,6 +138,31 @@ pub type Executive = frame_executive::Executive<
 	AllPalletsWithSystem,
 >;
 
+type EventRecord = frame_system::EventRecord<
+	<Runtime as frame_system::Config>::RuntimeEvent,
+	<Runtime as frame_system::Config>::Hash,
+>;
+
+
+pub const PLANCK: Balance = 1;
+pub const MICRODOT: Balance = PLANCK * 10_000;
+pub const MILLIDOT: Balance = PLANCK * 10_000_000;
+pub const DOT: Balance = PLANCK * 10_000_000_000;
+
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
+	items as Balance * 150 * MILLIDOT + bytes as Balance * 60 * MILLIDOT
+}
+
+fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
+	pallet_contracts::Schedule {
+		limits: pallet_contracts::Limits {
+			runtime_memory: 1024 * 1024 * 1024,
+			..Default::default()
+		},
+		..Default::default()
+	}
+}
+
 /// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
 /// node's balance type.
 ///
@@ -174,11 +215,11 @@ impl_opaque_keys! {
 
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("template-parachain"),
-	impl_name: create_runtime_str!("template-parachain"),
+	spec_name: create_runtime_str!("genesis-dao"),
+	impl_name: create_runtime_str!("genesis-dao"),
 	authoring_version: 1,
-	spec_version: 1,
-	impl_version: 0,
+	spec_version: 101,
+	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
 	state_version: 1,
@@ -309,6 +350,62 @@ impl frame_system::Config for Runtime {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+impl pallet_aura::Config for Runtime {
+	type AuthorityId = AuraId;
+	type DisabledValidators = ();
+	type MaxAuthorities = ConstU32<100_000>;
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
+}
+
+parameter_types! {
+	pub const DepositPerItem: Balance = deposit(1, 0);
+	pub const DepositPerByte: Balance = deposit(0, 1);
+	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
+	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
+}
+
+// Pallet contracts promises to never use this, but needs this type anyway
+// Therefore we provide it, but panic when called.
+pub struct FakeRandom;
+impl<Output, BlockNumber> Randomness<Output, BlockNumber> for FakeRandom {
+	fn random(_: &[u8]) -> (Output, BlockNumber) {
+		panic!("Pallet contracts promised not to call me");
+	}
+
+	fn random_seed() -> (Output, BlockNumber) {
+		panic!("Pallet contracts promised not to call me");
+	}
+}
+
+impl pallet_contracts::Config for Runtime {
+	type Time = Timestamp;
+	type Randomness = FakeRandom;
+	type Currency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	/// The safest default is to allow no calls at all.
+	///
+	/// Runtimes should whitelist dispatchables that are allowed to be called from contracts
+	/// and make sure they are stable. Dispatchables exposed to contracts are not allowed to
+	/// change because that would break already deployed contracts. The `RuntimeCall` structure
+	/// itself is not allowed to change the indices of existing pallets, too.
+	type CallFilter = frame_support::traits::Nothing;
+	type DepositPerItem = DepositPerItem;
+	type DepositPerByte = DepositPerByte;
+	type CallStack = [pallet_contracts::Frame<Self>; 31];
+	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
+	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
+	type ChainExtension = ();
+	type Schedule = Schedule;
+	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type MaxCodeLen = ConstU32<{ 128 * 1024 }>;
+	type DefaultDepositLimit = DefaultDepositLimit;
+	type MaxStorageKeyLen = ConstU32<128>;
+	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+	type UnsafeUnstableInterface = ConstBool<false>;
+	type Migrations = ();
+}
+
 impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
@@ -344,6 +441,23 @@ impl pallet_balances::Config for Runtime {
 	type MaxFreezes = ConstU32<0>;
 }
 
+// these values come from
+// https://github.com/AcalaNetwork/Acala/blob/master/runtime/acala/src/lib.rs
+parameter_types! {
+	pub MultisigDepositBase: Balance = deposit(1, 88);
+	pub MultisigDepositFactor: Balance = deposit(0, 32);
+}
+
+impl pallet_multisig::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type Currency = Balances;
+	type DepositBase = MultisigDepositBase;
+	type DepositFactor = MultisigDepositFactor;
+	type MaxSignatories = ConstU32<100>;
+	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
+}
+
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = 10 * MICROUNIT;
@@ -362,6 +476,66 @@ impl pallet_sudo::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type WeightInfo = ();
+}
+
+impl pallet_utility::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type PalletsOrigin = OriginCaller;
+	type WeightInfo = ();
+}
+
+// Configure the DAO pallets ...
+parameter_types! {
+	pub const ApprovalDeposit: Balance = EXISTENTIAL_DEPOSIT;
+	pub const AssetsStringLimit: u32 = 50;
+}
+
+// DAO assets
+impl pallet_dao_assets::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = Balance;
+	type AssetId = u32;
+	type AssetIdParameter = u32;
+	type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId>>;
+	type Currency = Balances;
+	type ForceOrigin = frame_system::EnsureRoot<AccountId>;
+	type ApprovalDeposit = ApprovalDeposit;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type StringLimit = AssetsStringLimit;
+	type HistoryHorizon = ConstU32<{ 5 * 144000 }>; // a day is 14400 blocks of 6s
+	type WeightInfo = pallet_dao_assets::weights::SubstrateWeight<Runtime>;
+
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+}
+
+// DAO core
+impl pallet_dao_core::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type MinLength = ConstU32<3>;
+	type MaxLengthId = ConstU32<8>;
+	type MaxLengthName = ConstU32<32>;
+	type MaxLengthMetadata = ConstU32<256>;
+	type Currency = Balances;
+	type DaoDeposit = ConstU128<{ 10 * DOT }>;
+	type TokenUnits = ConstU8<10>;
+	type AssetId = u32;
+	type WeightInfo = pallet_dao_core::weights::SubstrateWeight<Runtime>;
+}
+
+// DAO votes
+impl pallet_dao_votes::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type ProposalDeposit = ConstU128<{ 10 * DOT }>;
+	type ProposalId = u64;
+	type WeightInfo = pallet_dao_votes::weights::SubstrateWeight<Runtime>;
+}
+
+// Configure the Hookpoints pallet ...
+impl pallet_hookpoints::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type MaxLengthId = ConstU32<32>;
 }
 
 parameter_types! {
@@ -422,13 +596,6 @@ impl pallet_session::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_aura::Config for Runtime {
-	type AuthorityId = AuraId;
-	type DisabledValidators = ();
-	type MaxAuthorities = ConstU32<100_000>;
-	type AllowMultipleBlocksPerSlot = ConstBool<false>;
-}
-
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
 	pub const SessionLength: BlockNumber = 6 * HOURS;
@@ -456,11 +623,6 @@ impl pallet_collator_selection::Config for Runtime {
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type ValidatorRegistration = Session;
 	type WeightInfo = ();
-}
-
-/// Configure the pallet template in pallets/template.
-impl pallet_parachain_template::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -493,8 +655,15 @@ construct_runtime!(
 		CumulusXcm: cumulus_pallet_xcm = 32,
 		DmpQueue: cumulus_pallet_dmp_queue = 33,
 
-		// Template
-		TemplatePallet: pallet_parachain_template = 50,
+		Multisig: pallet_multisig = 40,
+		Utility: pallet_utility = 41,
+		Contracts: pallet_contracts = 42,
+
+		// Include the custom logic from the DAO pallets in the runtime.
+		Assets: pallet_dao_assets = 50,
+		DaoCore: pallet_dao_core = 51,
+		Votes: pallet_dao_votes = 52,
+		Hookpoints: pallet_hookpoints = 53,
 	}
 );
 
@@ -508,6 +677,9 @@ mod benches {
 		[pallet_sudo, Sudo]
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
+		[pallet_dao_assets, Assets]
+		[pallet_dao_core, DaoCore]
+		[pallet_dao_votes, Votes]
 	);
 }
 
@@ -646,6 +818,73 @@ impl_runtime_apis! {
 		}
 		fn query_length_to_fee(length: u32) -> Balance {
 			TransactionPayment::length_to_fee(length)
+		}
+	}
+
+impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord>
+		for Runtime
+	{
+		fn call(
+			origin: AccountId,
+			dest: AccountId,
+			value: Balance,
+			gas_limit: Option<Weight>,
+			storage_deposit_limit: Option<Balance>,
+			input_data: Vec<u8>,
+		) -> pallet_contracts_primitives::ContractExecResult<Balance, EventRecord> {
+			let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
+			Contracts::bare_call(
+				origin,
+				dest,
+				value,
+				gas_limit,
+				storage_deposit_limit,
+				input_data,
+				CONTRACTS_DEBUG_OUTPUT,
+				CONTRACTS_EVENTS,
+				pallet_contracts::Determinism::Enforced,
+			)
+		}
+
+		fn instantiate(
+			origin: AccountId,
+			value: Balance,
+			gas_limit: Option<Weight>,
+			storage_deposit_limit: Option<Balance>,
+			code: pallet_contracts_primitives::Code<Hash>,
+			data: Vec<u8>,
+			salt: Vec<u8>,
+		) -> pallet_contracts_primitives::ContractInstantiateResult<AccountId, Balance, EventRecord>
+		{
+			let gas_limit = gas_limit.unwrap_or(BlockWeights::get().max_block);
+			Contracts::bare_instantiate(
+				origin,
+				value,
+				gas_limit,
+				storage_deposit_limit,
+				code,
+				data,
+				salt,
+				CONTRACTS_DEBUG_OUTPUT,
+				CONTRACTS_EVENTS,
+			)
+		}
+
+		fn upload_code(
+			origin: AccountId,
+			code: Vec<u8>,
+			storage_deposit_limit: Option<Balance>,
+			determinism: pallet_contracts::Determinism,
+		) -> pallet_contracts_primitives::CodeUploadResult<Hash, Balance>
+		{
+			Contracts::bare_upload_code(origin, code, storage_deposit_limit, determinism)
+		}
+
+		fn get_storage(
+			address: AccountId,
+			key: Vec<u8>,
+		) -> pallet_contracts_primitives::GetStorageResult {
+			Contracts::get_storage(address, key)
 		}
 	}
 
