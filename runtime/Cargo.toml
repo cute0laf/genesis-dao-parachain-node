@@ -76,6 +76,8 @@ parachain-info = { git = "https://github.com/paritytech/cumulus.git", tag = "par
 
 pallet-dao-assets = { version = "4.0.0-dev", default-features = false, path = "../pallets/dao-assets" }
 pallet-dao-core = { version = "4.0.0-dev", default-features = false, path = "../pallets/dao-core" }
+pallet-dao-votes = { version = "4.0.0-dev", default-features = false, path = "../pallets/dao-votes" }
+pallet-hookpoints = { version = "4.0.0-dev", default-features = false, path = "../pallets/hookpoints" }
 
 [features]
 default = [
@@ -129,6 +131,9 @@ std = [
 	"xcm-executor/std",
 	"xcm/std",
 	"pallet-dao-assets/std",
+	"pallet-dao-core/std",
+	"pallet-dao-votes/std",
+	"pallet-hookpoints/std",
 	"substrate-wasm-builder",
 ]
 
@@ -151,6 +156,10 @@ runtime-benchmarks = [
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
 	"cumulus-pallet-session-benchmarking/runtime-benchmarks",
 	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
+	"pallet-dao-assets/runtime-benchmarks",
+	"pallet-dao-core/runtime-benchmarks",
+	"pallet-dao-votes/runtime-benchmarks",
+	"pallet-hookpoints/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -175,4 +184,8 @@ try-runtime = [
 	"pallet-utility/try-runtime",
 	"pallet-xcm/try-runtime",
 	"parachain-info/try-runtime",
+	"pallet-dao-assets/try-runtime",
+	"pallet-dao-core/try-runtime",
+	"pallet-dao-votes/try-runtime",
+	"pallet-hookpoints/try-runtime",
 ]

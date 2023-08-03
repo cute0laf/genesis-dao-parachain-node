@@ -30,7 +30,8 @@ use frame_support::{
 	dispatch::DispatchClass,
 	parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, ConstBool, ConstU128, ConstU32, ConstU64, ConstU8, EitherOfDiverse, Everything, Randomness,
+		AsEnsureOriginWithArg, ConstBool, ConstU128, ConstU32, ConstU64, ConstU8, EitherOfDiverse,
+		Everything, Randomness,
 	},
 	weights::{
 		constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
@@ -586,6 +587,20 @@ impl pallet_dao_core::Config for Runtime {
 	type WeightInfo = pallet_dao_core::weights::SubstrateWeight<Runtime>;
 }
 
+// DAO votes
+impl pallet_dao_votes::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type ProposalDeposit = ConstU128<{ 10 * DOT }>;
+	type ProposalId = u64;
+	type WeightInfo = pallet_dao_votes::weights::SubstrateWeight<Runtime>;
+}
+
+// Configure the Hookpoints pallet ...
+impl pallet_hookpoints::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type MaxLengthId = ConstU32<32>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime
@@ -621,7 +636,9 @@ construct_runtime!(
 		Contracts: pallet_contracts = 42,
 
 		Assets: pallet_dao_assets = 51,
-		DaoCore: pallet_dao_core = 52,		
+		DaoCore: pallet_dao_core = 52,
+		Votes: pallet_dao_votes = 53,
+		Hookpoints: pallet_hookpoints = 54,
 	}
 );
 
