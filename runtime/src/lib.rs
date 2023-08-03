@@ -29,7 +29,9 @@ use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	parameter_types,
-	traits::{ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, Everything, AsEnsureOriginWithArg},
+	traits::{
+		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, Everything,
+	},
 	weights::{
 		constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
 		WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -136,9 +138,9 @@ pub struct WeightToFee;
 impl WeightToFeePolynomial for WeightToFee {
 	type Balance = Balance;
 	fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-		// in Rococo, extrinsic base weight (smallest non-zero weight) is mapped to 1 MILLIUNIT:
-		// in our template, we map to 1/10 of that, or 1/10 MILLIUNIT
-		let p = MILLIUNIT / 10;
+		// in Rococo, extrinsic base weight (smallest non-zero weight) is mapped to 1 MILLIDOT:
+		// in our template, we map to 1/10 of that, or 1/10 MILLIDOT
+		let p = MILLIDOT / 10;
 		let q = 100 * Balance::from(ExtrinsicBaseWeight::get().ref_time());
 		smallvec![WeightToFeeCoefficient {
 			degree: 1,
@@ -203,11 +205,20 @@ pub const DAYS: BlockNumber = HOURS * 24;
 
 // Unit = the base number of indivisible units for balances
 pub const UNIT: Balance = 1_000_000_000_000;
-pub const MILLIUNIT: Balance = 1_000_000_000;
+pub const MILLIDOT: Balance = 1_000_000_000;
 pub const MICROUNIT: Balance = 1_000_000;
 
+pub const PLANCK: Balance = 1;
+pub const MICRODOT: Balance = PLANCK * 10_000;
+pub const MILLIDOT: Balance = PLANCK * 10_000_000;
+pub const DOT: Balance = PLANCK * 10_000_000_000;
+
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
+	items as Balance * 150 * MILLIDOT + bytes as Balance * 60 * MILLIDOT
+}
+
 /// The existential deposit. Set to 1/10 of the Connected Relay Chain.
-pub const EXISTENTIAL_DEPOSIT: Balance = MILLIUNIT;
+pub const EXISTENTIAL_DEPOSIT: Balance = MILLIDOT;
 
 /// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
 /// used to limit the maximal weight of a single extrinsic.
@@ -458,6 +469,23 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = ();
 }
 
+// these values come from
+// https://github.com/AcalaNetwork/Acala/blob/master/runtime/acala/src/lib.rs
+parameter_types! {
+	pub MultisigDepositBase: Balance = deposit(1, 88);
+	pub MultisigDepositFactor: Balance = deposit(0, 32);
+}
+
+impl pallet_multisig::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type Currency = Balances;
+	type DepositBase = MultisigDepositBase;
+	type DepositFactor = MultisigDepositFactor;
+	type MaxSignatories = ConstU32<100>;
+	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
+}
+
 // Configure the DAO pallets ...
 parameter_types! {
 	pub const ApprovalDeposit: Balance = EXISTENTIAL_DEPOSIT;
@@ -512,6 +540,8 @@ construct_runtime!(
 		PolkadotXcm: pallet_xcm = 31,
 		CumulusXcm: cumulus_pallet_xcm = 32,
 		DmpQueue: cumulus_pallet_dmp_queue = 33,
+
+		Multisig: pallet_multisig = 40,
 
 		Assets: pallet_dao_assets = 51,
 	}

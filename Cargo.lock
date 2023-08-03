@@ -6786,6 +6786,7 @@ dependencies = [
  "pallet-balances",
  "pallet-collator-selection",
  "pallet-dao-assets",
+ "pallet-multisig",
  "pallet-session",
  "pallet-sudo",
  "pallet-timestamp",
