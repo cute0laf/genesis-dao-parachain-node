@@ -203,11 +203,6 @@ pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
 pub const HOURS: BlockNumber = MINUTES * 60;
 pub const DAYS: BlockNumber = HOURS * 24;
 
-// Unit = the base number of indivisible units for balances
-pub const UNIT: Balance = 1_000_000_000_000;
-pub const MILLIDOT: Balance = 1_000_000_000;
-pub const MICROUNIT: Balance = 1_000_000;
-
 pub const PLANCK: Balance = 1;
 pub const MICRODOT: Balance = PLANCK * 10_000;
 pub const MILLIDOT: Balance = PLANCK * 10_000_000;
@@ -357,7 +352,7 @@ impl pallet_balances::Config for Runtime {
 
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
-	pub const TransactionByteFee: Balance = 10 * MICROUNIT;
+	pub const TransactionByteFee: Balance = MILLIDOT;
 }
 
 impl pallet_transaction_payment::Config for Runtime {
@@ -486,6 +481,13 @@ impl pallet_multisig::Config for Runtime {
 	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
 }
 
+impl pallet_utility::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type PalletsOrigin = OriginCaller;
+	type WeightInfo = ();
+}
+
 // Configure the DAO pallets ...
 parameter_types! {
 	pub const ApprovalDeposit: Balance = EXISTENTIAL_DEPOSIT;
@@ -542,6 +544,7 @@ construct_runtime!(
 		DmpQueue: cumulus_pallet_dmp_queue = 33,
 
 		Multisig: pallet_multisig = 40,
+		Utility: pallet_utility = 41,
 
 		Assets: pallet_dao_assets = 51,
 	}
