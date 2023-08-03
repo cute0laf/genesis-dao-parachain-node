@@ -1,12 +1,14 @@
 [package]
-name = "parachain-template-node"
-version = "0.1.0"
-authors = ["Anonymous"]
-description = "A new Cumulus FRAME-based Substrate Node, ready for hacking together a parachain."
-license = "Unlicense"
-homepage = "https://substrate.io"
-repository = "https://github.com/paritytech/cumulus/"
+name = "genesis-dao-parachain"
+version = "4.0.0-dev"
+description = "DAO as a Service"
+authors = ["chp <chp@deep-ink.ventures>"]
+homepage = "https://deep-ink.ventures"
 edition = "2021"
+license = "Unlicense"
+publish = false
+# todo
+repository = "https://github.com/shredding/genesis-dao"
 build = "build.rs"
 
 [dependencies]
@@ -18,7 +20,7 @@ jsonrpsee = { version = "0.16.2", features = ["server"] }
 futures = "0.3.28"
 
 # Local
-parachain-template-runtime = { path = "../runtime" }
+local-parachain-runtime = { path = "../runtime" }
 
 # Substrate
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "release-v1.0.0-cumulus" }
@@ -74,10 +76,10 @@ substrate-build-script-utils = { git = "https://github.com/paritytech/substrate"
 [features]
 default = []
 runtime-benchmarks = [
-	"parachain-template-runtime/runtime-benchmarks",
+	"local-parachain-runtime/runtime-benchmarks",
 	"polkadot-cli/runtime-benchmarks",
 ]
 try-runtime = [
 	"try-runtime-cli/try-runtime",
-	"parachain-template-runtime/try-runtime"
+	"local-parachain-runtime/try-runtime"
 ]
