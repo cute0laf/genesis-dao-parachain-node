@@ -99,7 +99,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		DaoCreated {
 			dao_id: DaoIdOf<T>,
-			owner: T::AccountId,
+			owner: AccountIdOf<T>,
 		},
 		DaoDestroyed {
 			dao_id: DaoIdOf<T>,
@@ -114,7 +114,7 @@ pub mod pallet {
 		},
 		DaoOwnerChanged {
 			dao_id: DaoIdOf<T>,
-			new_owner: T::AccountId,
+			new_owner: AccountIdOf<T>,
 		},
 	}
 

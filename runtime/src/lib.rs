@@ -30,7 +30,7 @@ use frame_support::{
 	dispatch::DispatchClass,
 	parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, Everything, Randomness,
+		AsEnsureOriginWithArg, ConstBool, ConstU128, ConstU32, ConstU64, ConstU8, EitherOfDiverse, Everything, Randomness,
 	},
 	weights::{
 		constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
@@ -572,6 +572,20 @@ impl pallet_dao_assets::Config for Runtime {
 	type BenchmarkHelper = ();
 }
 
+// DAO core
+impl pallet_dao_core::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type MinLength = ConstU32<3>;
+	type MaxLengthId = ConstU32<8>;
+	type MaxLengthName = ConstU32<32>;
+	type MaxLengthMetadata = ConstU32<256>;
+	type Currency = Balances;
+	type DaoDeposit = ConstU128<{ 10 * DOT }>;
+	type TokenUnits = ConstU8<10>;
+	type AssetId = u32;
+	type WeightInfo = pallet_dao_core::weights::SubstrateWeight<Runtime>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime
@@ -607,6 +621,7 @@ construct_runtime!(
 		Contracts: pallet_contracts = 42,
 
 		Assets: pallet_dao_assets = 51,
+		DaoCore: pallet_dao_core = 52,		
 	}
 );
 
