@@ -69,7 +69,7 @@ cumulus-client-service = { git = "https://github.com/paritytech/cumulus.git", ta
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus.git", tag = "parachains-v10000-rc5" }
 cumulus-primitives-parachain-inherent = { git = "https://github.com/paritytech/cumulus.git", tag = "parachains-v10000-rc5" }
 cumulus-relay-chain-interface = { git = "https://github.com/paritytech/cumulus.git", tag = "parachains-v10000-rc5" }
-color-print = "0.3.4"
+color-print = "0.3.5"
 
 [build-dependencies]
 substrate-build-script-utils = { git = "https://github.com/paritytech/substrate", branch = "release-v1.0.0-cumulus" }
